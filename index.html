@@ -35,7 +35,7 @@
     .student-card { background: white; border-radius: 14px; padding: 18px; text-align: center; border: 2px solid transparent; box-shadow: 0 2px 8px rgba(0,0,0,0.04); transition: all 0.2s; cursor: pointer; position: relative; overflow: hidden; }
     .student-card:hover { transform: translateY(-3px); border-color: var(--primary-light); box-shadow: 0 8px 16px rgba(0,0,0,0.08); }
     .avatar-wrap { position: relative; width: 80px; height: 80px; margin: 0 auto 10px; }
-    .avatar { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; border: 3px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.1); background: #f1f5f9; }
+    .avatar { width: 100%; height: 100%; border-radius: 50%; object-fit: contain; border: 3px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.1); background: #f8fafc; padding: 8px; }
     
     .level-badge { 
       position: absolute; top: -5px; left: 50%; transform: translateX(-50%);
@@ -304,20 +304,20 @@
     const MAX_LEVEL = 10;
     const XP_PER_LEVEL = 100;
 
-    // 宠物数据库（使用正确的动物图标）
+    // 宠物数据库（使用正确的独立动物图标）
     const PETS = {
       normal: [
         { id: 'cat', name: '猫咪', type: '普通', icon: 'https://cdn-icons-png.flaticon.com/512/616/616408.png' },
-        { id: 'dog', name: '小狗', type: '普通', icon: 'https://cdn-icons-png.flaticon.com/512/616/616408.png' },
+        { id: 'dog', name: '小狗', type: '普通', icon: 'https://cdn-icons-png.flaticon.com/512/616/616430.png' },
         { id: 'rabbit', name: '兔子', type: '普通', icon: 'https://cdn-icons-png.flaticon.com/512/1998/1998610.png' },
         { id: 'hamster', name: '仓鼠', type: '普通', icon: 'https://cdn-icons-png.flaticon.com/512/1998/1998749.png' }
       ],
       myth: [
         { id: 'ninefox', name: '九尾狐', type: '山海经', icon: 'https://cdn-icons-png.flaticon.com/512/3069/3069172.png' },
-        { id: 'qilin', name: '麒麟', type: '山海经', icon: 'https://cdn-icons-png.flaticon.com/512/3069/3069172.png' },
+        { id: 'qilin', name: '麒麟', type: '山海经', icon: 'https://cdn-icons-png.flaticon.com/512/821/821876.png' },
         { id: 'dragon', name: '青龙', type: '山海经', icon: 'https://cdn-icons-png.flaticon.com/512/3069/3069172.png' },
         { id: 'tiger', name: '白虎', type: '山海经', icon: 'https://cdn-icons-png.flaticon.com/512/616/616430.png' },
-        { id: 'phoenix', name: '凤凰', type: '山海经', icon: 'https://cdn-icons-png.flaticon.com/512/3069/3069172.png' }
+        { id: 'phoenix', name: '凤凰', type: '山海经', icon: 'https://cdn-icons-png.flaticon.com/512/1998/1998610.png' }
       ],
       galaxy: [
         { id: 'starcat', name: '星云猫', type: '银河', icon: 'https://cdn-icons-png.flaticon.com/512/616/616408.png' },
