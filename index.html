@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>班级优化大师 - 宠物养成版</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    :root { --primary: #4f46e5; --success: #10b981; --danger: #ef4444; --warning: #f59e0b; --bg: #f0f2f5; --card: #ffffff; --text: #1e293b; --text-light: #64748b; --border: #e2e8f0; --shadow: 0 4px 24px rgba(0,0,0,0.08); --radius: 16px; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+    #login-screen { position: fixed; inset: 0; background: linear-gradient(135deg, #4f46e5, #7c3aed); display: flex; align-items: center; justify-content: center; z-index: 9999; }
+    .login-box { background: white; padding: 40px; border-radius: 20px; width: 90%; max-width: 380px; box-shadow: 0 20px 50px rgba(0,0,0,0.3); text-align: center; animation: popIn 0.3s ease; position: relative; }
+    @keyframes popIn { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+    .login-box h2 { margin-bottom: 24px; color: var(--primary); }
+    .login-input { width: 100%; padding: 12px; margin-bottom: 16px; border: 2px solid var(--border); border-radius: 10px; font-size: 15px; outline: none; transition: border-color 0.2s; }
+    .login-input:focus { border-color: var(--primary); }
+    .login-hint { font-size: 12px; color: var(--text-light); margin-top: 12px; text-align: left; background: #f8fafc; padding: 10px; border-radius: 8px; line-height: 1.6; }
+    .config-alert { background: #fef3c7; color: #b45309; padding: 12px; border-radius: 10px; margin-bottom: 16px; font-size: 13px; }
+    .app-container { display: none; min-height: 100vh; }
+    .sidebar { width: 220px; background: white; position: fixed; top: 0; bottom: 0; left: 0; border-right: 1px solid var(--border); padding: 20px 0; z-index: 100; display: flex; flex-direction: column; box-shadow: 2px 0 10px rgba(0,0,0,0.03); }
+    .sidebar .logo { padding: 0 20px 24px; font-size: 20px; font-weight: 800; color: var(--primary); display: flex; align-items: center; gap: 8px; }
+    .nav-item { padding: 12px 20px; cursor: pointer; display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 600; color: #64748b; transition: all 0.2s; border-left: 3px solid transparent; user-select: none; }
+    .nav-item:hover { background: #f8fafc; color: var(--primary); }
+    .nav-item.active { background: #ede9fe; color: var(--primary); border-left-color: var(--primary); }
+    .nav-item .icon { width: 20px; text-align: center; }
+    .main { margin-left: 220px; padding: 28px 32px; min-height: 100vh; }
+    .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 12px; }
+    .page-header h1 { font-size: 24px; font-weight: 800; }
+    .page-header p { color: var(--text-light); font-size: 14px; margin-top: 4px; }
+    .user-badge { display: flex; align-items: center; gap: 10px; background: white; padding: 8px 16px; border-radius: 12px; box-shadow: var(--shadow); font-size: 14px; }
+    .role-tag { font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 6px; background: var(--primary); color: white; }
+    .card { background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow); padding: 24px; margin-bottom: 20px; }
+    .student-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; }
+    .student-card { background: white; border-radius: 14px; padding: 18px; text-align: center; border: 2px solid transparent; box-shadow: 0 2px 8px rgba(0,0,0,0.04); transition: all 0.2s; cursor: pointer; position: relative; overflow: hidden; }
+    .student-card:hover { transform: translateY(-3px); border-color: var(--primary-light); box-shadow: 0 8px 16px rgba(0,0,0,0.08); }
+    .avatar-wrap { position: relative; width: 80px; height: 80px; margin: 0 auto 10px; }
+    .avatar { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; border: 3px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.1); background: #f1f5f9; }
+    
+    .level-badge { 
+      position: absolute; top: -5px; left: 50%; transform: translateX(-50%);
+      background: linear-gradient(135deg, #fbbf24, #d97706); 
+      color: white; padding: 2px 10px; border-radius: 12px; 
+      font-size: 12px; font-weight: 800; box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+      border: 2px solid white; z-index: 2; white-space: nowrap;
+    }
+    .level-badge.max-level {
+      background: linear-gradient(45deg, #ef4444, #f59e0b, #10b981, #3b82f6, #8b5cf6);
+      background-size: 200% 200%;
+      animation: rainbow 3s ease infinite;
+      border-color: #fbbf24;
+      box-shadow: 0 0 10px rgba(251, 191, 36, 0.5);
+    }
+    @keyframes rainbow { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+
+    .score-badge { 
+      position: absolute; bottom: -2px; right: -2px; 
+      background: var(--primary); color: white; 
+      width: 26px; height: 26px; border-radius: 50%; 
+      display: flex; align-items: center; justify-content: center; 
+      font-weight: 800; font-size: 11px; border: 2px solid white; z-index: 2;
+    }
+    .xp-bar-container {
+      position: absolute; bottom: 0; left: 0; width: 100%; height: 4px; background: #e2e8f0;
+    }
+    .xp-bar-fill {
+      height: 100%; background: linear-gradient(90deg, #10b981, #3b82f6);
+      transition: width 0.5s ease;
+    }
+    .xp-bar-fill.max-level {
+      background: linear-gradient(90deg, #fbbf24, #f59e0b);
+    }
+
+    .s-name { font-weight: 700; font-size: 15px; margin: 45px 0 4px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .s-id { font-size: 12px; color: var(--text-light); margin-bottom: 8px; }
+    .pet-name { font-size: 11px; color: var(--primary); font-weight: 600; margin-top: 2px; }
+    .delete-stu-btn { position: absolute; top: 8px; right: 8px; width: 24px; height: 24px; background: #fee2e2; color: #ef4444; border: none; border-radius: 50%; font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; opacity: 0; transition: all 0.2s; z-index: 5; }
+    .student-card:hover .delete-stu-btn { opacity: 1; }
+    .delete-stu-btn:hover { background: #ef4444; color: white; transform: scale(1.1); }
+    .change-pet-btn { 
+      position: absolute; top: 8px; left: 8px; width: 24px; height: 24px; 
+      background: #e0e7ff; color: #4f46e5; border: none; border-radius: 50%; 
+      font-size: 14px; cursor: pointer; display: flex; align-items: center; 
+      justify-content: center; opacity: 0; transition: all 0.2s; z-index: 5; 
+    }
+    .student-card:hover .change-pet-btn { opacity: 1; }
+    .change-pet-btn:hover { background: #4f46e5; color: white; }
+    
+    .score-panel { display: none; position: fixed; bottom: 0; left: 0; right: 0; background: white; box-shadow: 0 -10px 40px rgba(0,0,0,0.15); padding: 24px; z-index: 500; border-top-left-radius: 20px; border-top-right-radius: 20px; animation: slideUp 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+    @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+    .sp-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+    .sp-student { display: flex; align-items: center; gap: 12px; font-weight: 700; }
+    .cp-grid { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; max-width: 900px; margin: 0 auto; }
+    .cp-btn { padding: 10px 16px; border-radius: 10px; border: none; font-weight: 700; font-size: 14px; cursor: pointer; transition: all 0.15s; min-width: 90px; display: flex; flex-direction: column; align-items: center; user-select: none; }
+    .cp-btn:active { transform: scale(0.95); }
+    .cp-btn.plus { background: #ecfdf5; color: #059669; border: 1px solid #d1fae5; }
+    .cp-btn.plus:hover { background: #10b981; color: white; }
+    .cp-btn.minus { background: #fef2f2; color: #dc2626; border: 1px solid #fee2e2; }
+    .cp-btn.minus:hover { background: #ef4444; color: white; }
+    .rv-form-row { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 24px; background: #f8fafc; padding: 16px; border-radius: 12px; }
+    .rv-form-row .form-group { margin-bottom: 0; flex: 1; min-width: 120px; }
+    .rv-form-row select, .rv-form-row input { width: 100%; padding: 10px; border: 2px solid var(--border); border-radius: 8px; font-size: 14px; outline: none; }
+    .rv-form-row input:focus, .rv-form-row select:focus { border-color: var(--primary); }
+    .rv-form-row .btn { height: 42px; margin-top: 4px; }
+    .rv-item { display: flex; align-items: center; justify-content: space-between; padding: 12px; background: white; border-bottom: 1px solid var(--border); }
+    .rv-item:last-child { border-bottom: none; }
+    .rv-tag { padding: 4px 8px; border-radius: 6px; font-size: 12px; font-weight: 600; margin-right: 8px; }
+    .rv-tag.plus { background: #d1fae5; color: #059669; } .rv-tag.minus { background: #fee2e2; color: #dc2626; }
+    .rv-del { padding: 4px 10px; background: #fee2e2; color: #ef4444; border: none; border-radius: 6px; cursor: pointer; font-size: 12px; }
+    .rv-del:hover { background: #ef4444; color: white; }
+    .shop-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 20px; }
+    .shop-item { background: white; border-radius: 14px; overflow: hidden; box-shadow: 0 2px 12px rgba(0,0,0,0.06); transition: all 0.2s; border: 2px solid transparent; }
+    .shop-item:hover { transform: translateY(-4px); box-shadow: 0 8px 24px rgba(0,0,0,0.12); border-color: var(--primary-light); }
+    .shop-img { width: 100%; height: 160px; object-fit: cover; background: #f1f5f9; }
+    .shop-info { padding: 16px; }
+    .shop-name { font-weight: 700; font-size: 16px; margin-bottom: 8px; }
+    .shop-desc { font-size: 13px; color: var(--text-light); margin-bottom: 12px; line-height: 1.5; min-height: 40px; }
+    .shop-footer { display: flex; justify-content: space-between; align-items: center; }
+    .shop-points { background: linear-gradient(135deg, #fbbf24, #f59e0b); color: white; padding: 6px 12px; border-radius: 20px; font-weight: 700; font-size: 14px; }
+    .shop-btn { padding: 8px 16px; border-radius: 8px; border: none; font-weight: 600; cursor: pointer; font-size: 13px; transition: all 0.2s; }
+    .shop-btn.exchange { background: var(--primary); color: white; }
+    .shop-btn.exchange:hover { background: #4338ca; }
+    .shop-btn.exchange:disabled { background: #cbd5e1; cursor: not-allowed; }
+    .shop-btn.delete { background: #fee2e2; color: #ef4444; }
+    .shop-btn.delete:hover { background: #ef4444; color: white; }
+    .log-list { list-style: none; }
+    .log-item { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border); }
+    .log-item:last-child { border-bottom: none; }
+    .log-dot { width: 8px; height: 8px; border-radius: 50%; }
+    .log-dot.pos { background: var(--success); } .log-dot.neg { background: var(--danger); }
+    .log-msg { flex: 1; font-size: 14px; } .log-time { font-size: 12px; color: var(--text-light); margin-left: auto; }
+    .undo-btn { padding: 6px 12px; background: #fef3c7; color: #d97706; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 12px; transition: 0.2s; }
+    .undo-btn:hover { background: #f59e0b; color: white; }
+    .picker-box, .timer-box { text-align: center; padding: 30px; background: white; border-radius: 16px; max-width: 600px; margin: 0 auto; }
+    .picker-display { font-size: 60px; font-weight: 800; color: var(--primary); margin: 20px 0; min-height: 70px; }
+    .timer-display { font-size: 80px; font-weight: 800; margin: 20px 0; font-variant-numeric: tabular-nums; }
+    .timer-warning { color: var(--warning); } .timer-danger { color: var(--danger); animation: pulse 1s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
+    .group-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 16px; }
+    .group-card { background: white; border-radius: 14px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
+    .g-header { padding: 14px; color: white; display: flex; justify-content: space-between; align-items: center; }
+    .g-members { padding: 12px; }
+    .g-member { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 14px; }
+    .att-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 10px; }
+    .att-item { text-align: center; padding: 12px; border-radius: 10px; border: 2px solid var(--border); cursor: pointer; background: white; transition: 0.2s; user-select: none; }
+    .att-item:hover { opacity: 0.9; }
+    .att-item.present { background: #d1fae5; border-color: var(--success); }
+    .att-item.absent { background: #fee2e2; border-color: var(--danger); }
+    .att-item.late { background: #fef3c7; border-color: var(--warning); }
+    .btn { padding: 10px 18px; border: none; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 6px; transition: all 0.2s; user-select: none; }
+    .btn-primary { background: var(--primary); color: white; } .btn-primary:hover { background: #4338ca; }
+    .btn-success { background: var(--success); color: white; } .btn-danger { background: var(--danger); color: white; }
+    .btn-outline { background: transparent; border: 2px solid var(--primary); color: var(--primary); } .btn-outline:hover { background: var(--primary); color: white; }
+    .btn-sm { padding: 6px 12px; font-size: 12px; border-radius: 8px; }
+    .tab-content { display: none; } .tab-content.active { display: block; }
+    .empty { text-align: center; padding: 40px; color: var(--text-light); }
+    .sync-bar { position: fixed; bottom: 12px; right: 12px; background: white; padding: 6px 12px; border-radius: 20px; box-shadow: var(--shadow); font-size: 12px; color: var(--text-light); z-index: 900; display: flex; align-items: center; gap: 6px; }
+    .sync-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--success); animation: blink 2s infinite; }
+    .sync-dot.offline { background: #ef4444; }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(4px); }
+    .modal-overlay.show { display: flex; }
+    .modal { background: white; border-radius: 16px; padding: 24px; width: 90%; max-width: 600px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); max-height: 90vh; overflow-y: auto; }
+    .form-group { margin-bottom: 14px; }
+    .form-group label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; color: var(--text-light); }
+    .form-group input, .form-group textarea, .form-group select { width: 100%; padding: 10px; border: 2px solid var(--border); border-radius: 8px; outline: none; font-size: 14px; }
+    .form-group input:focus, .form-group textarea:focus, .form-group select:focus { border-color: var(--primary); }
+    .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+    .preview-img { width: 100%; max-height: 200px; object-fit: cover; border-radius: 8px; margin-top: 8px; display: none; }
+    
+    /* 宠物选择界面 */
+    .pet-category { margin-bottom: 20px; }
+    .pet-category h3 { font-size: 16px; margin-bottom: 12px; color: var(--primary); border-left: 3px solid var(--primary); padding-left: 10px; }
+    .pet-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 12px; }
+    .pet-option { 
+      border: 2px solid var(--border); border-radius: 12px; padding: 12px; 
+      text-align: center; cursor: pointer; transition: all 0.2s; 
+      background: white;
+    }
+    .pet-option:hover { border-color: var(--primary); transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+    .pet-option.selected { border-color: var(--success); background: #ecfdf5; }
+    .pet-option img { width: 60px; height: 60px; border-radius: 50%; object-fit: contain; margin-bottom: 8px; background: #f8fafc; padding: 8px; }
+    .pet-option .name { font-size: 13px; font-weight: 600; }
+    .pet-option .type { font-size: 11px; color: var(--text-light); }
+    
+    .no-pet-alert {
+      background: #fef3c7; border: 2px solid #f59e0b; border-radius: 12px; 
+      padding: 20px; text-align: center; margin-bottom: 20px;
+    }
+    .no-pet-alert h3 { color: #b45309; margin-bottom: 10px; }
+    .no-pet-alert p { color: #92400e; font-size: 14px; margin-bottom: 16px; }
+    
+    @media(max-width:768px){ .sidebar{width:60px;}.sidebar span:last-child,.logo span:last-child{display:none;}.nav-item{justify-content:center;padding:14px 0;}.main{margin-left:60px;padding:16px;}.student-grid{grid-template-columns:repeat(auto-fill,minmax(140px,1fr));} }
+  </style>
+</head>
+<body>
+  <div id="login-screen">
+    <div class="login-box">
+      <h2>🌐 班级管理登录</h2>
+      <div id="cloud-status-alert" class="config-alert" style="display:none;">⚠️ 数据库未配置。</div>
+      <input type="text" id="login-user" class="login-input" placeholder="用户名">
+      <input type="password" id="login-pass" class="login-input" placeholder="密码">
+      <button type="button" id="login-btn" class="btn btn-primary" style="width:100%;padding:12px;font-size:15px;position:relative;z-index:10;">进 入</button>
+      <div class="login-hint">👨‍🎓 <strong>家长端示例</strong><br>用户名：学号 + 姓名（例：<code>1 张三</code>）<br>密 码：<code>123456</code></div>
+    </div>
+  </div>
+
+  <div class="app-container" id="app">
+    <nav class="sidebar">
+      <div class="logo">🌐<span>班级优化</span></div>
+      <div id="teacher-nav">
+        <div class="nav-item active" data-tab="main"><span class="icon">👨‍</span><span>学生点评</span></div>
+        <div class="nav-item" data-tab="review-mgmt"><span class="icon">⚙️</span><span>点评管理</span></div>
+        <div class="nav-item" data-tab="shop-mgmt"><span class="icon">🛒</span><span>小卖部</span></div>
+        <div class="nav-item" data-tab="undo"><span class="icon">↩️</span><span>撤销</span></div>
+        <div class="nav-item" data-tab="picker"><span class="icon">🎯</span><span>点名</span></div>
+        <div class="nav-item" data-tab="timer"><span class="icon">⏱️</span><span>计时</span></div>
+        <div class="nav-item" data-tab="ranking"><span class="icon">🏆</span><span>排行</span></div>
+        <div class="nav-item" data-tab="groups"><span class="icon">👥</span><span>小组</span></div>
+        <div class="nav-item" data-tab="attendance"><span class="icon">📋</span><span>考勤</span></div>
+        <div class="nav-item" data-tab="history"><span class="icon">📝</span><span>记录</span></div>
+      </div>
+      <div id="parent-nav" style="display:none;">
+        <div class="nav-item active" data-tab="mychild"><span class="icon">👶</span><span>我的孩子</span></div>
+        <div class="nav-item" data-tab="shop"><span class="icon">🛍️</span><span>兑换</span></div>
+        <div class="nav-item" data-tab="ranking"><span class="icon">🏆</span><span>排行</span></div>
+        <div class="nav-item" data-tab="history"><span class="icon">📝</span><span>记录</span></div>
+      </div>
+      <div style="margin-top:auto;padding:0 20px;"><div class="nav-item" id="logout-btn"><span class="icon">🚪</span><span>退出</span></div></div>
+    </nav>
+
+    <div class="main">
+      <div class="page-header"><div><h1 id="page-title">学生点评</h1><p id="page-sub">教师可为学生选择宠物 (最高 Lv.10)</p></div><div class="user-badge"><span id="user-display">教师端</span><span class="role-tag" id="role-tag">ADMIN</span></div></div>
+      
+      <div id="tab-main" class="tab-content active">
+        <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
+          <button type="button" class="btn btn-primary" id="add-stu-btn">➕ 添加学生</button>
+          <button type="button" class="btn btn-outline" id="batch-btn">📋 批量导入</button>
+          <button type="button" class="btn btn-danger" id="clear-btn">🗑️ 清空</button>
+        </div>
+        <div class="student-grid" id="main-grid"></div>
+      </div>
+
+      <!-- 其他 Tab 内容保持不变 -->
+      <div id="tab-review-mgmt" class="tab-content"><div class="card"><h3 style="margin-bottom:16px;">⚙️ 自定义点评规则</h3><div class="rv-form-row"><div class="form-group"><label>名称</label><input type="text" id="rv-name" placeholder="如：课堂发言"></div><div class="form-group"><label>类型</label><select id="rv-type"><option value="plus">加分</option><option value="minus">扣分</option></select></div><div class="form-group"><label>分值</label><input type="number" id="rv-score" value="10" min="1" max="100"></div><button type="button" class="btn btn-primary" id="rv-add-btn">➕ 添加</button></div><div class="card" style="padding:0;box-shadow:none;background:#f8fafc;"><ul id="rv-list" class="log-list" style="background:white;border-radius:12px;overflow:hidden;"></ul></div></div></div>
+      <div id="tab-shop-mgmt" class="tab-content"><div class="card"><h3 style="margin-bottom:16px;">🛒 商品管理</h3><button type="button" class="btn btn-primary" id="add-shop-item-btn" style="margin-bottom:20px;">➕ 添加商品</button><div id="shop-mgmt-list" class="shop-grid"></div></div></div>
+      <div id="tab-shop" class="tab-content"><div class="card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;"><h3>🛍️ 积分兑换</h3><div style="background:linear-gradient(135deg,#fbbf24,#f59e0b);color:white;padding:10px 20px;border-radius:12px;font-weight:700;font-size:16px;">我的积分：<span id="my-points">0</span></div></div><div id="shop-list" class="shop-grid"></div></div></div>
+      <div id="tab-mychild" class="tab-content"><div id="child-view"></div></div>
+      <div id="tab-undo" class="tab-content"><div class="card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;"><h3>📜 流水</h3><button type="button" class="btn btn-danger btn-sm" id="clear-log-btn">清空</button></div><ul class="log-list" id="undo-list"></ul></div></div>
+      <div id="tab-picker" class="tab-content"><div class="picker-box"><h3>🎲 随机点名</h3><div style="margin:16px 0;"><label>人数：</label><input type="number" id="picker-count" value="1" min="1" max="50" style="width:80px;padding:8px;text-align:center;border-radius:8px;border:2px solid var(--border);"></div><div class="picker-display" id="picker-res">?</div><button type="button" class="btn btn-primary btn-lg" id="picker-start">🚀 开始</button></div></div>
+      <div id="tab-timer" class="tab-content"><div class="timer-box"><h3>⏱️ 计时器</h3><div style="margin:12px 0;"><button type="button" class="btn btn-outline btn-sm preset-timer" data-min="1">1 分钟</button><button type="button" class="btn btn-outline btn-sm preset-timer" data-min="3">3 分钟</button><button type="button" class="btn btn-outline btn-sm preset-timer" data-min="5">5 分钟</button><button type="button" class="btn btn-outline btn-sm preset-timer" data-min="10">10 分钟</button></div><div class="timer-display" id="timer-disp">00:00</div><div style="display:flex;gap:10px;justify-content:center;"><button type="button" class="btn btn-success" id="timer-start">▶️</button><button type="button" class="btn btn-warning" id="timer-pause">⏸️</button><button type="button" class="btn btn-danger" id="timer-reset">🔄</button></div></div></div>
+      <div id="tab-ranking" class="tab-content"><div class="card"><ul class="log-list" id="rank-list"></ul></div></div>
+      <div id="tab-groups" class="tab-content"><div style="margin-bottom:16px;"><button type="button" class="btn btn-primary" id="create-group-btn">➕ 创建小组</button></div><div class="group-grid" id="group-grid"></div></div>
+      <div id="tab-attendance" class="tab-content"><div class="card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;"><h3 id="att-date">📅 考勤</h3><button type="button" class="btn btn-success btn-sm" id="save-att-btn">💾 保存</button></div><div id="att-summary" style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;"></div><div class="att-grid" id="att-grid"></div></div></div>
+      <div id="tab-history" class="tab-content"><div class="card"><ul class="log-list" id="hist-list"></ul></div></div>
+    </div>
+
+    <div class="score-panel" id="score-panel"><div class="sp-header"><div class="sp-student"><img id="sp-av" style="width:40px;height:40px;border-radius:50%;object-fit:cover;"><span id="sp-name"></span></div><button type="button" class="btn btn-outline btn-sm" id="close-panel-btn">✕ 关闭</button></div><div class="cp-grid" id="sp-btns"></div></div>
+
+    <!-- 宠物选择弹窗 -->
+    <div class="modal-overlay" id="pet-select-modal">
+      <div class="modal">
+        <h3 style="margin-bottom:16px;">🐾 为学生选择宠物伙伴</h3>
+        <p style="color:var(--text-light);font-size:13px;margin-bottom:20px;" id="pet-select-student-name"></p>
+        
+        <div class="pet-category">
+          <h3>🐱🐶 普通类</h3>
+          <div class="pet-grid" id="pet-grid-normal"></div>
+        </div>
+        
+        <div class="pet-category">
+          <h3>🐉 山海经类</h3>
+          <div class="pet-grid" id="pet-grid-myth"></div>
+        </div>
+        
+        <div class="pet-category">
+          <h3>🌌 银河类</h3>
+          <div class="pet-grid" id="pet-grid-galaxy"></div>
+        </div>
+        
+        <div class="modal-actions">
+          <button type="button" class="btn btn-outline" id="close-pet-select">取消</button>
+          <button type="button" class="btn btn-primary" id="confirm-pet-select">确认选择</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modals -->
+    <div class="modal-overlay" id="add-modal"><div class="modal"><h3>➕ 添加学生</h3><div class="form-group"><label>姓名</label><input id="add-name" placeholder="学生姓名"></div><div class="form-group"><label>学号</label><input id="add-id" placeholder="例如：1"></div><div class="form-group"><label>选择宠物</label><select id="add-pet-select"><option value="">暂不选择</option></select></div><div class="modal-actions"><button type="button" class="btn btn-outline" id="close-add">取消</button><button type="button" class="btn btn-primary" id="confirm-add">添加</button></div></div></div>
+    <div class="modal-overlay" id="batch-modal"><div class="modal"><h3>📋 批量导入</h3><div class="form-group"><label>姓名列表（每行一个）</label><textarea id="batch-txt" rows="6" placeholder="张三&#10;李四"></textarea></div><div class="modal-actions"><button type="button" class="btn btn-outline" id="close-batch">取消</button><button type="button" class="btn btn-primary" id="confirm-batch">导入</button></div></div></div>
+    <div class="modal-overlay" id="group-modal"><div class="modal"><h3>👥 创建小组</h3><div class="form-group"><label>组名</label><input id="g-name" placeholder="第一组"></div><div class="form-group" id="g-members" style="max-height:200px;overflow-y:auto;"></div><div class="modal-actions"><button type="button" class="btn btn-outline" id="close-group">取消</button><button type="button" class="btn btn-primary" id="confirm-group">创建</button></div></div></div>
+    <div class="modal-overlay" id="shop-modal"><div class="modal"><h3 id="shop-modal-title">添加商品</h3><div class="form-group"><label>名称</label><input type="text" id="shop-item-name" placeholder="例如：笔记本"></div><div class="form-group"><label>介绍</label><textarea id="shop-item-desc" rows="3" placeholder="描述..."></textarea></div><div class="form-group"><label>所需积分</label><input type="number" id="shop-item-points" min="1" value="100"></div><div class="form-group"><label>图片</label><input type="file" id="shop-item-img" accept="image/*"><img id="shop-img-preview" class="preview-img"></div><div class="modal-actions"><button type="button" class="btn btn-outline" id="close-shop-modal">取消</button><button type="button" class="btn btn-primary" id="confirm-shop-item">保存</button></div></div></div>
+    <div class="sync-bar"><div class="sync-dot" id="sync-dot"></div><span id="sync-txt">实时同步中</span></div>
+  </div>
+
+  <script>
+    // ==========================================
+    // 🔧 Supabase 配置区
+    // ==========================================
+    const SUPABASE_URL = 'https://jwhuxzrkpnebumjmwbsb.supabase.co';
+    const SUPABASE_ANON_KEY = 'sb_publishable_5PEvvXQW4tTjfG8couVFiw_fEl0vtxq';
+    // ==========================================
+
+    const MAX_LEVEL = 10;
+    const XP_PER_LEVEL = 100;
+
+    // 宠物数据库（使用正确的动物图标）
+    const PETS = {
+      normal: [
+        { id: 'cat', name: '猫咪', type: '普通', icon: 'https://cdn-icons-png.flaticon.com/512/616/616408.png' },
+        { id: 'dog', name: '小狗', type: '普通', icon: 'https://cdn-icons-png.flaticon.com/512/616/616408.png' },
+        { id: 'rabbit', name: '兔子', type: '普通', icon: 'https://cdn-icons-png.flaticon.com/512/1998/1998610.png' },
+        { id: 'hamster', name: '仓鼠', type: '普通', icon: 'https://cdn-icons-png.flaticon.com/512/1998/1998749.png' }
+      ],
+      myth: [
+        { id: 'ninefox', name: '九尾狐', type: '山海经', icon: 'https://cdn-icons-png.flaticon.com/512/3069/3069172.png' },
+        { id: 'qilin', name: '麒麟', type: '山海经', icon: 'https://cdn-icons-png.flaticon.com/512/3069/3069172.png' },
+        { id: 'dragon', name: '青龙', type: '山海经', icon: 'https://cdn-icons-png.flaticon.com/512/3069/3069172.png' },
+        { id: 'tiger', name: '白虎', type: '山海经', icon: 'https://cdn-icons-png.flaticon.com/512/616/616430.png' },
+        { id: 'phoenix', name: '凤凰', type: '山海经', icon: 'https://cdn-icons-png.flaticon.com/512/3069/3069172.png' }
+      ],
+      galaxy: [
+        { id: 'starcat', name: '星云猫', type: '银河', icon: 'https://cdn-icons-png.flaticon.com/512/616/616408.png' },
+        { id: 'galaxydragon', name: '银河龙', type: '银河', icon: 'https://cdn-icons-png.flaticon.com/512/3069/3069172.png' },
+        { id: 'cosmicfox', name: '宇宙狐', type: '银河', icon: 'https://cdn-icons-png.flaticon.com/512/3069/3069172.png' },
+        { id: 'nebulabird', name: '星云鸟', type: '银河', icon: 'https://cdn-icons-png.flaticon.com/512/1998/1998610.png' }
+      ]
+    };
+
+    // 获取宠物进化图片（根据等级返回不同图片）
+    function getPetImage(petId, level) {
+      const pet = Object.values(PETS).flat().find(p => p.id === petId);
+      if (!pet) return 'https://cdn-icons-png.flaticon.com/512/616/616408.png';
+      return pet.icon;
+    }
+
+    const DEFAULT_REVIEWS = [
+      { id: 'd1', name: '课堂发言', type: 'plus', score: 10 }, { id: 'd2', name: '认真听讲', type: 'plus', score: 10 },
+      { id: 'd3', name: '作业优秀', type: 'plus', score: 20 }, { id: 'd4', name: '帮助同学', type: 'plus', score: 20 },
+      { id: 'd5', name: '上课讲话', type: 'minus', score: 10 }, { id: 'd6', name: '做小动作', type: 'minus', score: 10 },
+      { id: 'd7', name: '未带作业', type: 'minus', score: 10 }, { id: 'd8', name: '迟到早退', type: 'minus', score: 20 }
+    ];
+
+    // 计算等级和进度
+    function calculateLevel(xp) {
+      let level = 1;
+      let required = XP_PER_LEVEL;
+      let totalUsed = 0;
+      
+      while (level < MAX_LEVEL && xp >= totalUsed + required) {
+        totalUsed += required;
+        level++;
+        required = level * XP_PER_LEVEL;
+      }
+      
+      const isMaxLevel = level === MAX_LEVEL;
+      let currentLevelXp, nextLevelXp, progress;
+
+      if (isMaxLevel) {
+        currentLevelXp = xp - totalUsed;
+        nextLevelXp = required;
+        progress = 100;
+      } else {
+        currentLevelXp = xp - totalUsed;
+        nextLevelXp = required;
+        progress = (currentLevelXp / nextLevelXp) * 100;
+      }
+      
+      return { level, currentLevelXp, nextLevelXp, progress, requiredForNext: required, isMaxLevel };
+    }
+
+    const CloudDB = {
+      client: null,
+      data: { students: [], logs: [], reviews: DEFAULT_REVIEWS, shop: [], groups: [], attendance: {} },
+      async init() {
+        if (SUPABASE_URL.includes('你的项目')) { document.getElementById('cloud-status-alert').style.display = 'block'; return; }
+        try {
+          this.client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+          await this.loadAll();
+          this.setupRealtime();
+          this.updateStatus(true);
+        } catch(e) { console.error("同步初始化失败:", e); this.updateStatus(false); showToast("数据库连接失败", "error"); }
+      },
+      async loadAll() {
+        const tables = ['students', 'logs', 'reviews', 'shop', 'groups'];
+        for (const t of tables) { const { data, error } = await this.client.from(t).select('*'); if (!error) this.data[t] = data || []; }
+        const { data: att } = await this.client.from('attendance').select('*').eq('id', 'global').single();
+        if (att) this.data.attendance = att.payload || {};
+        window.renderForKey('all');
+      },
+      setupRealtime() {
+        ['students', 'logs', 'reviews', 'shop', 'groups'].forEach(t => {
+          this.client.channel(t).on('postgres_changes', { event: '*', schema: 'public', table: t }, () => this.loadTable(t)).subscribe();
+        });
+        this.client.channel('attendance').on('postgres_changes', { event: '*', schema: 'public', table: 'attendance' }, () => this.loadTable('attendance')).subscribe();
+      },
+      async loadTable(t) {
+        try {
+          if (t === 'attendance') { const { data } = await this.client.from('attendance').select('*').eq('id', 'global').single(); if (data) this.data.attendance = data.payload || {}; } 
+          else { const { data } = await this.client.from(t).select('*'); this.data[t] = data || []; }
+          window.renderForKey(t);
+        } catch(e) { console.warn(`加载 ${t} 失败`, e); }
+      },
+      async set(t, dataArray) {
+        try {
+          if (t !== 'attendance') {
+            await this.client.from(t).delete().is('id', 'not.null');
+            if (dataArray.length) await this.client.from(t).insert(dataArray);
+          } else { await this.client.from('attendance').upsert({ id: 'global', payload: dataArray }); }
+          this.data[t] = dataArray; this.updateStatus(true);
+        } catch(e) { showToast("保存失败", "error"); this.updateStatus(false); }
+      },
+      updateStatus(online) {
+        const dot = document.getElementById('sync-dot'); const txt = document.getElementById('sync-txt');
+        if(online) { dot.className = 'sync-dot'; txt.textContent = '全球节点实时同步中'; }
+        else { dot.className = 'sync-dot offline'; txt.textContent = '同步中断'; }
+      }
+    };
+
+    let currentUser = null; let timerInt = null, timerSec = 0, timerRun = false; let editingShopItem = null;
+    let selectedPetId = null;
+    let petSelectStudentId = null;
+
+    document.addEventListener('DOMContentLoaded', () => {
+      CloudDB.init();
+      document.getElementById('login-screen').style.display = 'flex'; document.getElementById('app').style.display = 'none';
+      document.getElementById('login-btn').addEventListener('click', handleLogin);
+      document.getElementById('login-pass').addEventListener('keydown', e => { if(e.key === 'Enter') handleLogin(); });
+      document.querySelectorAll('.nav-item[data-tab]').forEach(item => item.addEventListener('click', () => switchTab(item.dataset.tab)));
+      document.getElementById('logout-btn').addEventListener('click', logout);
+      bindEvents();
+      initPetSelection();
+      initAddStudentPetSelect();
+    });
+
+    function initPetSelection() {
+      // 渲染宠物选择界面
+      ['normal', 'myth', 'galaxy'].forEach(category => {
+        const grid = document.getElementById(`pet-grid-${category}`);
+        if (!grid) return;
+        grid.innerHTML = PETS[category].map(pet => `
+          <div class="pet-option" data-pet="${pet.id}" onclick="selectPet('${pet.id}')">
+            <img src="${pet.icon}" alt="${pet.name}">
+            <div class="name">${pet.name}</div>
+            <div class="type">${pet.type}</div>
+          </div>
+        `).join('');
+      });
+
+      document.getElementById('confirm-pet-select').addEventListener('click', confirmPetSelection);
+      document.getElementById('close-pet-select').addEventListener('click', () => {
+        document.getElementById('pet-select-modal').classList.remove('show');
+      });
+    }
+
+    function initAddStudentPetSelect() {
+      // 初始化添加学生时的宠物下拉框
+      const select = document.getElementById('add-pet-select');
+      const allPets = Object.values(PETS).flat();
+      select.innerHTML = '<option value="">暂不选择</option>' + allPets.map(pet => 
+        `<option value="${pet.id}">${pet.name} (${pet.type})</option>`
+      ).join('');
+    }
+
+    window.selectPet = function(petId) {
+      selectedPetId = petId;
+      document.querySelectorAll('.pet-option').forEach(el => el.classList.remove('selected'));
+      document.querySelector(`.pet-option[data-pet="${petId}"]`).classList.add('selected');
+    };
+
+    function confirmPetSelection() {
+      if (!selectedPetId) {
+        alert('请选择一个宠物！');
+        return;
+      }
+      if (!petSelectStudentId) return;
+      
+      const student = CloudDB.data.students.find(s => s.id === petSelectStudentId);
+      if (!student) return;
+      
+      // 如果已经有宠物且分数>0，提示会清零
+      if (student.petId && student.petId !== selectedPetId && student.score > 0) {
+        if (!confirm(`⚠️ 更换宠物会清零当前分数（${student.score}分）！确定要更换吗？`)) {
+          return;
+        }
+      }
+      
+      // 更新学生宠物
+      const updated = CloudDB.data.students.map(s => {
+        if (s.id === petSelectStudentId) {
+          return {
+            ...s,
+            petId: selectedPetId,
+            score: (s.petId && s.petId !== selectedPetId) ? 0 : s.score
+          };
+        }
+        return s;
+      });
+      
+      CloudDB.set('students', updated);
+      document.getElementById('pet-select-modal').classList.remove('show');
+      showToast('宠物选择成功！', 'success');
+      renderAll();
+    }
+
+    function bindEvents() {
+      const btn = (id, fn) => document.getElementById(id).addEventListener('click', fn);
+      btn('add-stu-btn', showAddStudent); btn('batch-btn', showBatchAdd); btn('clear-btn', clearData);
+      btn('clear-log-btn', clearLog); btn('picker-start', startPicker);
+      btn('timer-start', () => toggleTimer(true)); btn('timer-pause', () => toggleTimer(false)); btn('timer-reset', resetTimer);
+      btn('save-att-btn', () => CloudDB.set('attendance', CloudDB.data.attendance)); btn('create-group-btn', showAddGroup);
+      btn('confirm-add', addStudent); btn('confirm-batch', batchAdd); btn('confirm-group', createGroup);
+      btn('close-panel-btn', closePanel); btn('rv-add-btn', addReview);
+      btn('add-shop-item-btn', () => openShopModal()); btn('confirm-shop-item', saveShopItem);
+      btn('close-shop-modal', () => closeModal('shop-modal'));
+      document.querySelectorAll('.preset-timer').forEach(b => b.addEventListener('click', () => setTimer(parseInt(b.dataset.min))));
+      ['close-add','close-batch','close-group'].forEach(id => document.getElementById(id).addEventListener('click', function(){ this.closest('.modal-overlay').classList.remove('show'); }));
+      document.querySelectorAll('.modal-overlay').forEach(ov => ov.addEventListener('click', e => { if(e.target === ov) ov.classList.remove('show'); }));
+      document.getElementById('shop-item-img').addEventListener('change', function(e) {
+        const file = e.target.files[0]; if(!file) return;
+        const reader = new FileReader(); reader.onload = e => { document.getElementById('shop-img-preview').src = e.target.result; document.getElementById('shop-img-preview').style.display = 'block'; }; reader.readAsDataURL(file);
+      });
+    }
+
+    function handleLogin() {
+      const u = document.getElementById('login-user').value.trim(); const p = document.getElementById('login-pass').value.trim();
+      if (!u || !p) return alert('请输入用户名和密码');
+      if (u === 'admin' && p === 'LHP123456') currentUser = {role:'teacher', name:'管理员'};
+      else {
+        const stu = CloudDB.data.students.find(s => (s.id + s.name) === u);
+        if (stu && p === '123456') currentUser = {role:'parent', stu};
+        else return alert('❌ 登录失败：用户名或密码错误。\n💡 提示：家长账号需在教师端添加学生后生效。\n格式：学号 + 姓名（如 1 张三）');
+      }
+      enterApp();
+    }
+    function enterApp() {
+      document.getElementById('login-screen').style.display = 'none'; document.getElementById('app').style.display = 'block';
+      if(currentUser.role === 'teacher') {
+        document.getElementById('teacher-nav').style.display = 'block'; document.getElementById('parent-nav').style.display = 'none';
+        document.getElementById('user-display').textContent = '教师端'; document.getElementById('role-tag').textContent = 'ADMIN';
+        switchTab('main');
+      } else {
+        document.getElementById('teacher-nav').style.display = 'none'; document.getElementById('parent-nav').style.display = 'block';
+        document.getElementById('user-display').textContent = currentUser.stu.name + '家长'; document.getElementById('role-tag').textContent = 'PARENT';
+        switchTab('mychild');
+      }
+      renderAll();
+    }
+    function logout() { currentUser = null; document.getElementById('app').style.display = 'none'; document.getElementById('login-screen').style.display = 'flex'; document.getElementById('login-user').value = ''; document.getElementById('login-pass').value = ''; }
+
+    window.renderForKey = function(key) { if(key==='all') renderAll(); else if(key==='students') { renderGrid(); renderRank(); if(currentUser?.role==='parent') renderChild(); renderShop(); } else if(key==='logs') { renderUndo(); renderHistory(); if(currentUser?.role==='parent') renderChild(); } else if(key==='reviews') renderReviewsMgmt(); else if(key==='shop') { renderShopManagement(); renderShop(); } else if(key==='groups') renderGroups(); else if(key==='attendance') renderAtt(); };
+    function renderAll() { renderGrid(); renderUndo(); renderRank(); renderGroups(); renderAtt(); renderHistory(); renderReviewsMgmt(); if(currentUser?.role==='teacher') renderShopManagement(); if(currentUser?.role==='parent') { renderChild(); renderShop(); } }
+    function switchTab(id) {
+      document.querySelectorAll('.tab-content').forEach(e => e.classList.remove('active'));
+      document.querySelectorAll('.nav-item').forEach(e => e.classList.remove('active'));
+      document.getElementById('tab-'+id).classList.add('active');
+      document.querySelectorAll('.nav-item').forEach(item => { if(item.dataset.tab === id) item.classList.add('active'); });
+      if(id==='main') renderGrid(); else if(id==='review-mgmt') renderReviewsMgmt(); else if(id==='shop-mgmt') renderShopManagement();
+      else if(id==='shop') renderShop(); else if(id==='undo') renderUndo(); else if(id==='ranking') renderRank();
+      else if(id==='groups') renderGroups(); else if(id==='attendance') renderAtt(); else if(id==='history') renderHistory();
+      else if(id==='mychild') renderChild();
+    }
+
+    function renderGrid() {
+      const g = document.getElementById('main-grid'); if(!CloudDB.data.students.length) { g.innerHTML='<div class="empty" style="grid-column:1/-1;">👨‍🎓 暂无学生</div>'; return; }
+      const isT = currentUser?.role==='teacher';
+      g.innerHTML = CloudDB.data.students.map(s => {
+        const lv = calculateLevel(s.score);
+        const petName = s.petId ? Object.values(PETS).flat().find(p => p.id === s.petId)?.name : '未选择';
+        const petImg = s.petId ? getPetImage(s.petId, lv.level) : 'https://cdn-icons-png.flaticon.com/512/616/616408.png';
+        return `
+        <div class="student-card" onclick="${isT?`openScore('${s.id}')`:`showToast('仅教师可操作','info')`}">
+          ${isT?`<button type="button" class="delete-stu-btn" onclick="event.stopPropagation();deleteStudent('${s.id}')" title="删除学生">×</button>`:''}
+          ${isT?`<button type="button" class="change-pet-btn" onclick="event.stopPropagation();openPetSelect('${s.id}')" title="更换宠物">🐾</button>`:''}
+          <div class="level-badge ${lv.isMaxLevel ? 'max-level' : ''}">Lv.${lv.level}${lv.isMaxLevel ? ' MAX' : ''}</div>
+          <div class="avatar-wrap">
+            <img src="${petImg}" class="avatar" alt="宠物">
+            <div class="score-badge">${lv.isMaxLevel ? 'MAX' : `${lv.currentLevelXp}/${lv.nextLevelXp}`}</div>
+          </div>
+          <div class="s-name">${s.name}</div>
+          <div class="pet-name">${s.petId ? '🐾 ' + petName : '⚠️ 未选择宠物'}</div>
+          <div class="s-id">经验值：${s.score}</div>
+          <div class="xp-bar-container"><div class="xp-bar-fill ${lv.isMaxLevel ? 'max-level' : ''}" style="width:${lv.progress}%"></div></div>
+        </div>`;
+      }).join('');
+    }
+
+    function deleteStudent(id) { if(!confirm('确定删除该学生吗？')) return; CloudDB.set('students', CloudDB.data.students.filter(s=>s.id!==id)); showToast('已删除','success'); }
+    
+    // 教师端打开宠物选择
+    window.openPetSelect = function(studentId) {
+      petSelectStudentId = studentId;
+      const student = CloudDB.data.students.find(s => s.id === studentId);
+      if (!student) return;
+      
+      document.getElementById('pet-select-student-name').textContent = `正在为 ${student.name} 选择宠物`;
+      document.getElementById('pet-select-modal').classList.add('show');
+      
+      // 重置选择
+      selectedPetId = student.petId || null;
+      document.querySelectorAll('.pet-option').forEach(el => el.classList.remove('selected'));
+      if (selectedPetId) {
+        document.querySelector(`.pet-option[data-pet="${selectedPetId}"]`)?.classList.add('selected');
+      }
+    };
+
+    function renderReviewsMgmt() { const l = document.getElementById('rv-list'); if(!CloudDB.data.reviews.length){l.innerHTML='<li class="empty">暂无规则</li>';return;} l.innerHTML = CloudDB.data.reviews.map(rv=>`<li class="rv-item"><div><span class="rv-tag ${rv.type}">${rv.type==='plus'?'加分':'扣分'}</span><strong>${rv.name}</strong><span style="color:var(--text-light);margin-left:8px;">(${rv.type==='plus'?'+':''}${rv.score}经验)</span></div><button type="button" class="rv-del" onclick="deleteReview('${rv.id}')">删除</button></li>`).join(''); }
+    function addReview() { const n=document.getElementById('rv-name').value.trim(); const t=document.getElementById('rv-type').value; const s=parseInt(document.getElementById('rv-score').value); if(!n||!s) return alert('请填写完整'); CloudDB.set('reviews', [...CloudDB.data.reviews, {id:Date.now().toString(), name:n, type:t, score:s}]); document.getElementById('rv-name').value=''; document.getElementById('rv-score').value=10; showToast('已添加','success'); }
+    function deleteReview(id) { CloudDB.set('reviews', CloudDB.data.reviews.filter(r=>r.id!==id)); }
+    function renderShopManagement() { const c = document.getElementById('shop-mgmt-list'); if(!CloudDB.data.shop.length){c.innerHTML='<div class="empty" style="grid-column:1/-1;">暂无商品</div>';return;} c.innerHTML = CloudDB.data.shop.map(i=>`<div class="shop-item"><img src="${i.image||'image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22160%22%3E%3Crect fill=%22%23f1f5f9%22 width=%22200%22 height=%22160%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 fill=%22%2394a3b8%22 text-anchor=%22middle%22 dy=%22.3em%22%3E无图片%3C/text%3E%3C/svg%3E'}" class="shop-img"><div class="shop-info"><div class="shop-name">${i.name}</div><div class="shop-desc">${i.description}</div><div class="shop-footer"><div class="shop-points">${i.points}积分</div><button type="button" class="shop-btn delete" onclick="deleteShopItem('${i.id}')">删除</button></div></div></div>`).join(''); }
+    function openShopModal(item=null){ editingShopItem=item; document.getElementById('shop-modal-title').textContent=item?'编辑商品':'添加商品'; document.getElementById('shop-item-name').value=item?.name||''; document.getElementById('shop-item-desc').value=item?.description||''; document.getElementById('shop-item-points').value=item?.points||100; document.getElementById('shop-img-preview').style.display='none'; if(item?.image){document.getElementById('shop-img-preview').src=item.image;document.getElementById('shop-img-preview').style.display='block';} document.getElementById('shop-modal').classList.add('show'); }
+    function saveShopItem() { const n=document.getElementById('shop-item-name').value.trim(); const d=document.getElementById('shop-item-desc').value.trim(); const p=parseInt(document.getElementById('shop-item-points').value); const img=document.getElementById('shop-img-preview').style.display!=='none'?document.getElementById('shop-img-preview').src:null; if(!n||!d||!p) return alert('请填写完整'); let updated; if(editingShopItem) updated=CloudDB.data.shop.map(i=>i.id===editingShopItem.id?{...i,name:n,description:d,points:p,image:img||i.image}:{...i}); else updated=[...CloudDB.data.shop, {id:Date.now().toString(),name:n,description:d,points:p,image:img}]; CloudDB.set('shop', updated); closeModal('shop-modal'); showToast('已保存','success'); }
+    function deleteShopItem(id){ CloudDB.set('shop', CloudDB.data.shop.filter(i=>i.id!==id)); }
+    function renderShop() { const c=document.getElementById('shop-list'); const stu=CloudDB.data.students.find(s=>s.id===currentUser?.stu?.id); const pts=stu?stu.score:0; document.getElementById('my-points').textContent=pts; if(!CloudDB.data.shop.length){c.innerHTML='<div class="empty" style="grid-column:1/-1;">暂无商品</div>';return;} c.innerHTML = CloudDB.data.shop.map(i=>{const ok=pts>=i.points;return`<div class="shop-item"><img src="${i.image||'image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22160%22%3E%3Crect fill=%22%23f1f5f9%22 width=%22200%22 height=%22160%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 fill=%22%2394a3b8%22 text-anchor=%22middle%22 dy=%22.3em%22%3E无图片%3C/text%3E%3C/svg%3E'}" class="shop-img"><div class="shop-info"><div class="shop-name">${i.name}</div><div class="shop-desc">${i.description}</div><div class="shop-footer"><div class="shop-points">${i.points}积分</div><button type="button" class="shop-btn exchange" ${!ok?'disabled':''} onclick="exchangeItem('${i.id}',${i.points},'${i.name}')">${ok?'立即兑换':'积分不足'}</button></div></div></div>`;}).join(''); }
+    function exchangeItem(id, pts, name) { const stu=CloudDB.data.students.find(s=>s.id===currentUser.stu.id); if(!stu||stu.score<pts) return showToast('积分不足','error'); if(!confirm(`确定使用 ${pts} 积分兑换 "${name}" 吗？`)) return; CloudDB.set('students', CloudDB.data.students.map(s=>s.id===stu.id?{...s, score:s.score-pts}:{...s})); CloudDB.set('logs', [{id:Date.now().toString(),sid:stu.id,sname:stu.name,delta:-pts,prev:stu.score+pts,newScore:stu.score,reason:`兑换：${name}`,time:new Date().toISOString()}, ...CloudDB.data.logs]); showToast('兑换成功','success'); }
+
+    let curStuId=null;
+    function openScore(id){ 
+      curStuId=id; 
+      const s=CloudDB.data.students.find(x=>x.id===id); 
+      if (!s.petId) {
+        alert('⚠️ 该学生尚未选择宠物，无法加分！');
+        return;
+      }
+      document.getElementById('sp-name').textContent=s.name; 
+      const lv = calculateLevel(s.score);
+      document.getElementById('sp-av').src=getPetImage(s.petId, lv.level); 
+      renderScorePanelButtons(); 
+      document.getElementById('score-panel').style.display='block'; 
+    }
+    function renderScorePanelButtons(){ if(!CloudDB.data.reviews) return; document.getElementById('sp-btns').innerHTML=CloudDB.data.reviews.map(rv=>{const v=rv.type==='plus'?rv.score:-rv.score;return`<button type="button" class="cp-btn ${rv.type}" onclick="applyScore(${v},'${rv.name}')">${v>0?'+':''}${v}<span style="font-size:12px;">${rv.name}</span></button>`;}).join(''); }
+    function closePanel(){ document.getElementById('score-panel').style.display='none'; curStuId=null; }
+    function applyScore(delta, reason) {
+      const s=CloudDB.data.students.find(x=>x.id===curStuId); if(!s) return;
+      if (!s.petId) {
+        alert('⚠️ 该学生尚未选择宠物！');
+        return;
+      }
+      const prevLevel = calculateLevel(s.score).level;
+      const prev=s.score; 
+      CloudDB.set('students', CloudDB.data.students.map(st=>st.id===curStuId?{...st, score:st.score+delta, lastChange:delta}:{...st}));
+      CloudDB.set('logs', [{id:Date.now().toString(), sid:s.id, sname:s.name, delta, prev, newScore:s.score+delta, reason, time:new Date().toISOString()}, ...CloudDB.data.logs]);
+      
+      const newLevel = calculateLevel(s.score + delta).level;
+      if(newLevel > prevLevel && newLevel <= MAX_LEVEL) {
+        if(newLevel === MAX_LEVEL) {
+           showToast(`👑 恭喜！${s.name} 的宠物已达最高等级 Lv.${MAX_LEVEL}！`, 'success');
+        } else {
+           showToast(`🎉 恭喜！${s.name} 的宠物升级为 Lv.${newLevel}！`, 'success');
+        }
+        showConfetti();
+        playSound('pos');
+      } else {
+        playSound(delta>0?'pos':'neg');
+      }
+    }
+
+    function renderUndo(){ const l=document.getElementById('undo-list'); if(!CloudDB.data.logs||!CloudDB.data.logs.length){l.innerHTML='<li class="empty">暂无记录</li>';return;} l.innerHTML=CloudDB.data.logs.slice(0,50).map(e=>{const s=CloudDB.data.students.find(st=>st.id===e.sid);return`<li class="log-item"><div class="log-dot ${e.delta>0?'pos':'neg'}"></div><div class="log-msg"><strong>${e.sname}</strong> ${e.reason} (${e.prev}→${e.newScore})</div><div class="log-time">${new Date(e.time).toLocaleTimeString()}</div>${s?`<button type="button" class="undo-btn" onclick="undoScore('${e.id}')">撤销</button>`:''}</li>`;}).join(''); }
+    function undoScore(logId){ const idx=CloudDB.data.logs.findIndex(x=>x.id===logId); if(idx===-1)return; const e=CloudDB.data.logs[idx]; const s=CloudDB.data.students.find(x=>x.id===e.sid); if(!s)return; CloudDB.set('students', CloudDB.data.students.map(st=>st.id===e.sid?{...st, score:e.prev}:{...st})); CloudDB.set('logs', CloudDB.data.logs.filter(l=>l.id!==logId)); showToast(`已撤销 ${e.sname}`,'info'); }
+    function clearLog(){ if(confirm('确定清空流水？')){CloudDB.set('logs',[]);} }
+
+    function startPicker(){ const n=parseInt(document.getElementById('picker-count').value)||1; if(n>CloudDB.data.students.length)return alert('人数超限'); let it=0; const iv=setInterval(()=>{document.getElementById('picker-res').textContent=CloudDB.data.students.filter(s=>s.petId).sort(()=>0.5-Math.random()).slice(0,n).map(s=>s.name).join(', ');if(++it>15){clearInterval(iv);playSound('pos');}},100); }
+    function setTimer(m){if(timerRun)return;timerSec=m*60;updTimer();}
+    function updTimer(){const m=Math.floor(Math.abs(timerSec)/60),s=Math.abs(timerSec)%60;const d=document.getElementById('timer-disp');d.textContent=`${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;d.classList.remove('timer-warning','timer-danger');if(timerSec<=60&&timerSec>0)d.classList.add('timer-warning');if(timerSec<=10&&timerSec>0)d.classList.add('timer-danger');}
+    function toggleTimer(run){if(run&&!timerRun){timerRun=true;timerInt=setInterval(()=>{timerSec--;updTimer();if(timerSec<=0){timerRun=false;clearInterval(timerInt);playSound('neg');showToast('⏰ 时间到！','info');}},1000);}else{timerRun=false;clearInterval(timerInt);}}
+    function resetTimer(){timerRun=false;clearInterval(timerInt);timerSec=0;updTimer();}
+    function renderRank(){const l=document.getElementById('rank-list');const sorted=[...CloudDB.data.students].sort((a,b)=>b.score-a.score);if(!sorted.length){l.innerHTML='<div class="empty">暂无数据</div>';return;}const max=sorted[0]?.score||1;l.innerHTML=sorted.map((s,i)=>{const lv=calculateLevel(s.score); const petName = s.petId ? Object.values(PETS).flat().find(p => p.id === s.petId)?.name : '-'; return`<li class="log-item"><div style="width:30px;height:30px;border-radius:8px;background:${i<3?['#fbbf24','#94a3b8','#d97706'][i]:'#f1f5f9'};display:flex;align-items:center;justify-content:center;color:${i<3?'white':'#64748b'};font-weight:800;">${i+1}</div><div style="flex:1;"><strong>${s.name}</strong> <span style="font-size:11px;color:var(--text-light);">🐾${petName||'-'}</span> <span style="font-size:12px;color:var(--primary);background:#e0e7ff;padding:2px 6px;border-radius:4px;margin-left:8px;">Lv.${lv.level}${lv.isMaxLevel?'👑':''}</span><div style="height:6px;background:#e2e8f0;border-radius:3px;margin-top:4px;overflow:hidden;"><div style="width:${lv.progress}%;height:100%;background:${lv.isMaxLevel?'linear-gradient(90deg,#fbbf24,#f59e0b)':'var(--primary)'};"></div></div></div><div style="font-weight:800;color:var(--primary);">${s.score}XP</div></li>`;}).join('');}
+    function renderGroups(){const g=document.getElementById('group-grid');if(!CloudDB.data.groups||!CloudDB.data.groups.length){g.innerHTML='<div class="empty" style="grid-column:1/-1;">暂无小组</div>';return;}const c=['#4f46e5','#059669','#d97706','#dc2626','#7c3aed'];g.innerHTML=CloudDB.data.groups.map((gr,i)=>{const tot=gr.members.reduce((s,m)=>{const st=CloudDB.data.students.find(x=>x.id===m);return s+(st?st.score:0);},0);return`<div class="group-card"><div class="g-header" style="background:${c[i%c.length]}"><h3>${gr.name}</h3><span style="font-size:20px;font-weight:800;">${tot}XP</span></div><div class="g-members">${gr.members.map(m=>{const st=CloudDB.data.students.find(x=>x.id===m);return st?`<div class="g-member"><span>${st.name}</span><span style="font-weight:700;">${st.score}XP</span></div>`:'';}).join('')}</div><div style="padding:10px;display:flex;gap:6px;"><button type="button" class="btn btn-success btn-sm" onclick="grpScore(${i},10)">+10</button><button type="button" class="btn btn-danger btn-sm" onclick="grpScore(${i},-10)">-10</button></div></div>`;}).join('');}
+    function showAddGroup(){document.getElementById('g-name').value='';document.getElementById('g-members').innerHTML=CloudDB.data.students.map(s=>`<label style="display:block;padding:6px;"><input type="checkbox" value="${s.id}"> ${s.name}</label>`).join('');document.getElementById('group-modal').classList.add('show');}
+    function createGroup(){const n=document.getElementById('g-name').value.trim();if(!n)return alert('请输入组名');const ms=Array.from(document.querySelectorAll('#g-members input:checked')).map(c=>c.value);if(!ms.length)return alert('请选择组员');CloudDB.set('groups',[...CloudDB.data.groups,{id:Date.now().toString(),name:n,members:ms}]);closeModal('group-modal');showToast('小组创建成功','success');}
+    function grpScore(i,d){const g=CloudDB.data.groups[i];if(!g)return;g.members.forEach(m=>{const s=CloudDB.data.students.find(x=>x.id===m);if(s)s.score+=d;});CloudDB.set('groups',CloudDB.data.groups);renderRank();showToast(`${g.name} 全员 ${d>0?'+':''}${d}`,'info');}
+    function renderAtt(){const t=new Date().toISOString().split('T')[0];document.getElementById('att-date').textContent=`📅 ${t} 考勤`;if(!CloudDB.data.attendance[t])CloudDB.data.attendance[t]={};document.getElementById('att-grid').innerHTML=CloudDB.data.students.map(s=>{const st=CloudDB.data.attendance[t][s.id]||'';return`<div class="att-item ${st}" onclick="toggleAtt('${s.id}')"><div style="font-weight:700;">${s.name}</div><div style="font-size:12px;color:#64748b;margin-top:4px;">${st==='present'?'✅':st==='absent'?'❌':st==='late'?'⏰':''}</div></div>`;}).join('');const vals=Object.values(CloudDB.data.attendance[t]);document.getElementById('att-summary').innerHTML=`<span style="background:#d1fae5;padding:4px 10px;border-radius:6px;">✅ ${vals.filter(v=>v==='present').length}</span><span style="background:#fee2e2;padding:4px 10px;border-radius:6px;">❌ ${vals.filter(v=>v==='absent').length}</span><span style="background:#fef3c7;padding:4px 10px;border-radius:6px;">⏰ ${vals.filter(v=>v==='late').length}</span>`;}
+    function toggleAtt(id){const t=new Date().toISOString().split('T')[0];const c=['','present','late','absent'];const i=c.indexOf(CloudDB.data.attendance[t][id]||'');CloudDB.data.attendance[t][id]=c[(i+1)%c.length];}
+    function renderHistory(){const l=document.getElementById('hist-list');const rev=[...CloudDB.data.logs].reverse();if(!rev||!rev.length){l.innerHTML='<div class="empty">暂无记录</div>';return;}l.innerHTML=rev.map(e=>`<li class="log-item"><div class="log-dot ${e.delta>0?'pos':'neg'}"></div><div class="log-msg"><strong>${e.sname}</strong> ${e.reason}</div><div class="log-time">${new Date(e.time).toLocaleString()}</div></li>`).join('');}
+    
+    function renderChild(){
+      const v=document.getElementById('child-view');
+      const s=CloudDB.data.students.find(x=>x.id===currentUser?.stu?.id);
+      if(!s) return;
+      
+      if (!s.petId) {
+        v.innerHTML = `<div class="no-pet-alert">
+          <h3>⚠️ 尚未选择宠物</h3>
+          <p>请联系教师为您选择宠物伙伴！</p>
+        </div>`;
+        return;
+      }
+      
+      const lv=calculateLevel(s.score);
+      const petInfo = Object.values(PETS).flat().find(p => p.id === s.petId);
+      const petImg = getPetImage(s.petId, lv.level);
+      const myLogs=CloudDB.data.logs.filter(l=>l.sid===s.id);
+      
+      v.innerHTML=`<div class="card" style="text-align:center;max-width:600px;margin:0 auto;">
+        <div style="position:relative;width:120px;height:120px;margin:0 auto 16px;">
+          <img src="${petImg}" style="width:100%;height:100%;border-radius:50%;object-fit:contain;border:4px solid var(--primary);box-shadow:0 4px 12px rgba(0,0,0,0.1);background:#f8fafc;padding:10px;">
+          <div class="level-badge ${lv.isMaxLevel ? 'max-level' : ''}" style="position:absolute;top:0;left:50%;transform:translateX(-50%);font-size:14px;padding:4px 12px;">Lv.${lv.level}${lv.isMaxLevel ? ' MAX' : ''}</div>
+        </div>
+        <h2>${s.name}</h2>
+        <div style="font-size:14px;color:var(--primary);margin-bottom:8px;">🐾 ${petInfo?.name||''}</div>
+        <div style="font-size:28px;font-weight:800;color:var(--primary);margin:10px 0;">${s.score} XP ${lv.isMaxLevel ? '(已满级)' : ''}</div>
+        <div style="background:#e2e8f0;height:12px;border-radius:6px;margin:10px 0;overflow:hidden;">
+          <div style="width:${lv.progress}%;height:100%;background:${lv.isMaxLevel?'linear-gradient(90deg,#fbbf24,#f59e0b)':'linear-gradient(90deg,#10b981,#3b82f6)'};transition:width 0.5s ease;"></div>
+        </div>
+        <div style="font-size:12px;color:var(--text-light);margin-bottom:20px;">
+          ${lv.isMaxLevel ? '🎉 已达到最高等级！' : `距下一级还需 ${lv.nextLevelXp - lv.currentLevelXp} XP`}
+        </div>
+        <div style="text-align:left;margin-top:24px;">
+          <h3 style="border-bottom:1px solid var(--border);padding-bottom:8px;margin-bottom:12px;">近期点评</h3>
+          <ul class="log-list">${myLogs.slice(0,10).map(l=>`<li class="log-item"><div class="log-dot ${l.delta>0?'pos':'neg'}"></div><div class="log-msg">${l.reason}</div><div style="font-weight:700;color:${l.delta>0?'var(--success)':'var(--danger)'};">${l.delta>0?'+':''}${l.delta}</div></li>`).join('')}</ul>
+        </div>
+      </div>`;
+    }
+    
+    function showAddStudent(){
+      document.getElementById('add-name').value='';
+      document.getElementById('add-id').value='';
+      document.getElementById('add-pet-select').value='';
+      document.getElementById('add-modal').classList.add('show');
+    }
+    function showBatchAdd(){document.getElementById('batch-txt').value='';document.getElementById('batch-modal').classList.add('show');}
+    function addStudent(){
+      const n=document.getElementById('add-name').value.trim();
+      const id=document.getElementById('add-id').value.trim();
+      const petId=document.getElementById('add-pet-select').value;
+      if(!n)return alert('请输入姓名');
+      CloudDB.set('students',[...CloudDB.data.students,{id:id||Date.now().toString(),name:n,score:0,avatar:null,petId:petId||null}]);
+      closeModal('add-modal');
+      showToast('已添加','success');
+    }
+    function batchAdd(){const t=document.getElementById('batch-txt').value.trim();if(!t)return alert('请输入姓名');const newStus=t.split('\n').filter(n=>n.trim()).map((n,i)=>{if(!CloudDB.data.students.find(s=>s.name===n.trim()))return{id:Date.now().toString()+i,name:n.trim(),score:0,avatar:null,petId:null};return null;}).filter(Boolean);CloudDB.set('students',[...CloudDB.data.students,...newStus]);closeModal('batch-modal');showToast('批量导入完成','success');}
+    function closeModal(id){document.getElementById(id).classList.remove('show');}
+    function clearData(){if(confirm('⚠️ 确定清空所有云端数据？')){CloudDB.set('students',[]);CloudDB.set('logs',[]);CloudDB.set('groups',[]);CloudDB.data.attendance={};CloudDB.set('attendance',{});CloudDB.set('reviews',DEFAULT_REVIEWS);CloudDB.set('shop',[]);showToast('数据已清空','info');}}
+    function showToast(m,t='info'){const c=document.createElement('div');c.style.cssText=`position:fixed;top:20px;right:20px;background:${t==='success'?'#10b981':t==='error'?'#ef4444':'#4f46e5'};color:white;padding:12px 20px;border-radius:10px;z-index:9999;animation:fadeIn 0.3s;font-weight:600;box-shadow:0 4px 12px rgba(0,0,0,0.15);`;c.textContent=m;document.body.appendChild(c);setTimeout(()=>c.remove(),2500);}
+    function playSound(t){try{const ctx=new(window.AudioContext||window.webkitAudioContext)();const o=ctx.createOscillator();const g=ctx.createGain();o.connect(g);g.connect(ctx.destination);if(t==='pos'){o.type='sine';o.frequency.setValueAtTime(600,ctx.currentTime);o.frequency.exponentialRampToValueAtTime(1200,ctx.currentTime+0.1);g.gain.setValueAtTime(0.2,ctx.currentTime);g.gain.exponentialRampToValueAtTime(0.01,ctx.currentTime+0.3);}else{o.type='sawtooth';o.frequency.setValueAtTime(180,ctx.currentTime);o.frequency.linearRampToValueAtTime(100,ctx.currentTime+0.25);g.gain.setValueAtTime(0.2,ctx.currentTime);g.gain.exponentialRampToValueAtTime(0.01,ctx.currentTime+0.3);}o.start();o.stop(ctx.currentTime+0.3);}catch(e){}}
+    function showConfetti(){const colors=['#ef4444','#f59e0b','#10b981','#3b82f6','#8b5cf6'];for(let i=0;i<50;i++){const p=document.createElement('div');p.style.cssText=`position:fixed;top:-10px;left:${Math.random()*100}vw;width:8px;height:8px;background:${colors[Math.floor(Math.random()*colors.length)]};border-radius:${Math.random()>0.5?'50%':'0'};z-index:9999;animation:fall ${2+Math.random()*2}s ease-in forwards;`;document.body.appendChild(p);setTimeout(()=>p.remove(),4000);}const st=document.createElement('style');st.textContent=`@keyframes fall{to{transform:translateY(110vh) rotate(${Math.random()*360}deg);opacity:0;}}`;document.head.appendChild(st);}
+  </script>
+</body>
+</html>
