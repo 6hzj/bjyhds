@@ -55,27 +55,10 @@ cd <project-directory>
 ```
 
 ### 2. 配置 Supabase
-
-**重要：您需要先绑定自己的 Supabase 数据库！**
-
-1. 访问 [Supabase 官网](https://supabase.com) 注册账号
-2. 创建一个新的项目
-3. 在项目的 **设置 (Settings) → API** 页面获取以下信息：
-   - **Project URL** (项目地址)
-   - **anon/public key** (匿名密钥)
-
-> 💡 **提示**：上述配置信息位于 Supabase 控制台的 **左侧菜单栏底部 "Settings" → "API"** 选项卡中（大约在第 3 行第 1 列附近）。
-
-4. 在 `index.html` 中配置您的 Supabase 凭证：
+在 `index.html` 中配置您的 Supabase 凭证：
 ```javascript
 const supabase = createClient('YOUR_SUPABASE_URL', 'YOUR_SUPABASE_ANON_KEY');
 ```
-
-**默认管理员账号：**
-- 账号：`admin`
-- 密码：`LHP123456`
-
-> ⚠️ 请首次登录后及时修改默认密码以确保安全！
 
 ### 3. 创建数据库表
 参考项目文档创建所需的数据表结构。
